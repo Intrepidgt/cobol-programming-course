@@ -1,0 +1,63 @@
+If you install Zowe CL1 and run into this particular error.
+
+zowe : File C:\Users\"enter user"\AppData\Roaming\npm\zowe.ps1 cannot be loaded.
+The file C:\C:\Users\"enter user"\AppData\Roaming\npm\zowe.ps1 is not digitally signed.
+You cannot run this script on the current system. For more information about running scripts
+and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170.
+At line: char:
++ zowe "Whatever cmdlet you are trying"
++ CategoryInfo		: SecurityError: (:) [], PSSecurityException
++ FullyQualifiedErrorId : UnauthorizedAccess
+
+You can create your own Self-Signed Certificate to go around this particular problem and digitally
+sign the zowe.ps1 file on your computer.
+
+Follow the following instructions to digitally sign the zowe.ps1 file on your machine.
+
+1. Open a Powershell Terminal as Administrator.
+   Change to the directory where the zowe.ps1 file is located.
+   Probably at C:\Users\"your username"\AppData\Roaming\npm.
+   A quick dir command should let you see the contents of this directory.
+
+2. At the command prompt type the following.
+
+	makecert -n "CN=PowerShell Local Certificate Root" -a sha1 `
+	-eku 1.3.6.1.5.5.7.3.3 -r -sv root.pvk root.cer `
+	-ss Root -sr localMachine
+
+	makecert -pe -n "CN=PowerShell User" -ss MY -a sha1 `
+	-eku 1.3.6.1.5.5.7.3.3 -iv root.pvk -ic root.cer
+
+3. The MakeCert.exe tool will prompt you for a private key password. 
+   The password ensures that no one can use or access the certificate without your consent. 
+   Create and enter a password that you can remember. 
+   You will use this password later to retrieve the certificate.
+
+4. To verify that the certificate was generated correctly, 
+   use the following command to get the certificate in the certificate store on the computer. 
+   (You will not find a certificate file in the file system directory.)
+
+5. At the PowerShell prompt, type:
+
+	Get-ChildItem cert:\CurrentUser\my -codesigning.
+
+6. If certificate was created, the output show the thumbprint that identifies the certificate in a display
+   that will have text that looks like the following:(Note your machine could give  different txt strings)
+
+   Directory: Microsoft.PowerShell.Security\Certificate::CurrentUser\My (This line is constant across Windows 10)
+
+   Thumbprint                                   Subject
+   ----------					-------
+   4E4917BC541714AB.(long alphanumeric string)	CN=PowerShell User ]
+
+7. Now you  are ready to sign the zowe.ps1 file
+   First unblock file. Enter Unblock-File zowe.ps1
+
+8. Enter the following lines one at a time
+   
+   at the command prompt type without the quotation marks "$cert = @(Get-ChildItem cert:\CurrentUser\My -codesigning)[0]" hit enter
+ 
+   at the command prompt type without the quotation marks "Set-AuthenticodeSignature zowe.ps1 $cert" hit enter.
+
+9. Test that you now have a digitally signed zowe.ps1 by entering a command that is dependent on a digitally signed 
+   zowe.ps1 file eg.zowe scs u
